@@ -1,5 +1,6 @@
 const authJwt = require("../middlewares/authJwt");
 const controller = require('../controllers/loan.controller');
+const  upload  = require('../utils/multer'); // nếu dùng multer tách riêng
 
 module.exports = function (app) {
   app.use(function (req, res, next) {
@@ -10,5 +11,6 @@ module.exports = function (app) {
     next();
   });
 
-  app.post('/loan/batch', authJwt.verifyToken, controller.createBatchLoan);
-}
+  app.post('/api/loan/upload-image',  upload.single('image'), controller.uploadLoanImage);
+  app.post('/api/loan/batch', authJwt.verifyToken, controller.createBatchLoan);
+};

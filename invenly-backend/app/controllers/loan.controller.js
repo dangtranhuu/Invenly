@@ -1,5 +1,5 @@
 const Item = require('../models/item.model');
-const Loan = require('../models/loan.model');
+const Loan = require('../models/loan.model').default;
 
 exports.createBatchLoan = async (req, res) => {
   try {
@@ -53,5 +53,29 @@ exports.createBatchLoan = async (req, res) => {
   } catch (err) {
     console.error('Lỗi tạo phiếu mượn:', err);
     return res.status(500).json({ error: 'Lỗi server' });
+  }
+};
+
+exports.uploadLoanImage = async (req, res) => {
+  try {
+    const file = req.file;
+    if (!file) return res.status(400).json({ error: 'No image uploaded' });
+
+    const stream = cloudinary.uploader.upload_stream(
+      { folder: 'ivenly-loans' },
+      async (error, result) => {
+        if (error) {
+          console.error('Cloudinary error:', error);
+          return res.status(500).json({ error: 'Image upload failed' });
+        }
+
+        return res.status(200).json({ imageUrl: result.secure_url });
+      }
+    );
+
+    streamifier.createReadStream(file.buffer).pipe(stream);
+  } catch (err) {
+    console.error('[UPLOAD LOAN IMAGE ERROR]', err);
+    res.status(500).json({ error: 'Server error during image upload' });
   }
 };

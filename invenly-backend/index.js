@@ -54,6 +54,7 @@ app.get('/', (req, res) => {
 require("./app/routes/auth.route")(app);
 require("./app/routes/user.route")(app);
 require("./app/routes/item.route")(app);
+require("./app/routes/loan.route")(app);
 require("./app/routes/borrowRequest.route")(app);
 
 

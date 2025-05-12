@@ -4,7 +4,9 @@ const config = require("../config/auth.config.js");
 const verifyToken = (req, res, next) => {
   const tokenHeader = req.header("Authorization");
 
-  if (!tokenHeader || !tokenHeader.startsWith("Bearer ")) {
+  console.log(`auth: ${tokenHeader}`);
+
+  if (!tokenHeader || !tokenHeader.startsWith("Bearer ")){
     return res.status(403).send({ message: "No token or malformed token!" });
   }
 
