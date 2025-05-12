@@ -1,6 +1,28 @@
 const Item = require('../models/item.model');
 const Loan = require('../models/loan.model').default;
 
+exports.returnLoanItem = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // 1. Tìm loan record
+    const loan = await Loan.findById(id);
+    if (!loan) return res.status(404).json({ error: 'Không tìm thấy bản ghi mượn' });
+
+    // 2. Cập nhật Loan: đánh dấu là đã trả
+    loan.isDeleted = true;
+    await loan.save();
+
+    // 3. Cập nhật Item: không còn là đang mượn
+    await Item.updateOne({ code: loan.code }, { isLoaned: false });
+
+    res.status(200).json({ message: '✅ Vật phẩm đã được nhận lại thành công' });
+  } catch (err) {
+    console.error('[RETURN LOAN ERROR]', err);
+    res.status(500).json({ error: 'Lỗi server khi xử lý trả vật phẩm' });
+  }
+};
+
 exports.createBatchLoan = async (req, res) => {
   try {
     const { borrowerName, items } = req.body;
@@ -79,3 +101,5 @@ exports.uploadLoanImage = async (req, res) => {
     res.status(500).json({ error: 'Server error during image upload' });
   }
 };
+
+
