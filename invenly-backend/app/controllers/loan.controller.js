@@ -21,22 +21,26 @@ exports.getLoanByUser = async (req, res) => {
 
     const loans = await Loan.find(query).sort({ loanDate: -1 });
 
-    const codes = loans.map((l) => l.code);
+    const codes = loans.map((l) => l.itemId);
     const items = await Item.find({ code: { $in: codes } });
 
     // Ghép thông tin item vào loan
-    const result = loans.map((loan) => {
-      const item = items.find((i) => i._id.toString() === loan.itemId.toString());
-      return {
-        _id: loan._id,
-        code: item?.code || 'Không rõ',
-        name: item?.name || 'Không rõ',
-        borrowerName: loan.borrowerName,
-        loanDate: loan.loanDate, // hoặc createdAt nếu cần
-        returnDueDate: loan.returnDueDate,
-        imageUrl: item?.imageUrl || null,
-      };
-    });
+    const result = loans
+      .map((loan) => {
+        const item = items.find((i) => i.code === loan.itemId);
+        if (!item) return null; // bỏ qua loan không hợp lệ
+        return {
+          _id: loan._id,
+          code: item.code,
+          name: item.name,
+          borrowerName: loan.borrowerName,
+          loanDate: loan.loanDate,
+          returnDueDate: loan.returnDueDate,
+          imageUrl: item.imageUrl || null,
+        };
+      })
+      .filter(Boolean); // loại bỏ null
+
 
 
     res.status(200).json({ items: result });
@@ -94,7 +98,7 @@ exports.createBatchLoan = async (req, res) => {
       }
 
       const loan = new Loan({
-        itemId: dbItem._id,
+        itemId: itemData.code,
         borrowerName,
         loanDate: now,
         returnDueDate: itemData.returnDueDate,

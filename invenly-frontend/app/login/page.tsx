@@ -8,11 +8,11 @@ import { Card, CardContent } from '@/components/ui/card';
 import { login } from '@/lib/api';
 
 export default function LoginPage() {
-    const router = useRouter();
-    const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
+  const router = useRouter();
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,6 +25,7 @@ export default function LoginPage() {
       localStorage.setItem('invenly_token', data.user.token);
 
       const pending = localStorage.getItem('pendingLoanRequest');
+
       if (pending) {
         const payload = JSON.parse(pending);
 
@@ -47,13 +48,25 @@ export default function LoginPage() {
           }
 
           localStorage.removeItem('pendingLoanRequest');
-          router.push('/loan'); // hoặc quay về /scan
+          router.push('/loan'); // hoặc quay lại nơi người dùng đã ở
           return;
         } catch (err) {
           alert('❌ Lỗi khi gửi lại yêu cầu mượn');
           // vẫn tiếp tục login
         }
       }
+
+      // ✅ Nếu không có pendingLoanRequest, check redirectAfterLogin
+      const redirect = localStorage.getItem('redirectAfterLogin');
+      console.log(redirect)
+      if (redirect) {
+        console.log(`redirect to: ${redirect}`)
+        // localStorage.removeItem('redirectAfterLogin');
+        router.push(redirect);
+      } else {
+        router.push('/dashboard'); // fallback
+      }
+
 
       // Không có pending loan → login bình thường
       router.push('/dashboard');
