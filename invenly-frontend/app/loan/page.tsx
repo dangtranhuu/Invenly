@@ -89,7 +89,7 @@ export default function LoanScanPage() {
     if (!borrowerImageFile) return '';
 
     const formData = new FormData();
-    formData.append('file', borrowerImageFile);
+    formData.append('image', borrowerImageFile);
 
     const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/loan/upload-image`, {
       method: 'POST',
@@ -139,6 +139,13 @@ export default function LoanScanPage() {
       });
 
       const result = await res.json();
+
+      if (res.status === 401 || res.status === 403) {
+        setStatusMessage('⚠️ Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
+        localStorage.setItem('pendingLoanRequest', JSON.stringify(payload));
+        window.location.href = '/login';
+        return;
+      }
 
       if (res.ok) {
         setStatusMessage(`✅ Mượn thành công: ${result.success} vật phẩm\n❌ Thất bại: ${result.failed.join(', ')}`);
