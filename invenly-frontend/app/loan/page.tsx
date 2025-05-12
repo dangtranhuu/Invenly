@@ -1,26 +1,20 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 export default function LoanScanPage() {
   const scannerRef = useRef<any>(null);
   const scannedRef = useRef(false);
-  const scannerContainerRef = useRef<HTMLDivElement>(null);
 
   const [scannedItems, setScannedItems] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [borrowerName, setBorrowerName] = useState('');
   const [borrowerImageFile, setBorrowerImageFile] = useState<File | null>(null);
+  const [borrowerImageUrl, setBorrowerImageUrl] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+
 
   const scannedCodesRef = useRef<Set<string>>(new Set());
 
@@ -57,63 +51,39 @@ export default function LoanScanPage() {
     }, 3000);
   };
 
-useEffect(() => {
-  let html5QrCode: any;
-  const containerId = 'scanner-container';
+  useEffect(() => {
+    import('html5-qrcode').then(({ Html5Qrcode }) => {
+      const container = document.getElementById('reader');
+      if (container) container.innerHTML = '';
 
-  import('html5-qrcode').then(({ Html5Qrcode }) => {
-    const container = document.getElementById(containerId);
-    if (!container) return;
+      const scanner = new Html5Qrcode('reader');
+      scannerRef.current = scanner;
 
-    // 💥 Clear DOM nếu đã có nội dung (phòng trường hợp bị double-mount)
-    container.innerHTML = '';
-
-    // 💥 Nếu đã có scanner trước đó thì clear và dừng
-    if (scannerRef.current) {
-  try {
-    scannerRef.current.clear();
-  } catch (e) {
-    console.error('Lỗi khi clear scanner:', e);
-  }
-  scannerRef.current = null;
-}
-
-
-    // ✅ Tạo scanner mới
-    html5QrCode = new Html5Qrcode(containerId);
-    scannerRef.current = html5QrCode;
-
-    html5QrCode
-      .start(
-        { facingMode: 'environment' },
-        { fps: 10, qrbox: { width: 250, height: 250 } },
-        (decodedText: string) => handleResult(decodedText),
-        () => {}
-      )
-      .catch((err: any) => {
-        console.error('🚫 Không thể mở camera:', err);
-      });
-  });
-
-  return () => {
-    if (scannerRef.current) {
-      scannerRef.current
-        .stop()
+      scanner
+        .start(
+          { facingMode: 'environment' },
+          { fps: 10, qrbox: 250 },
+          (decodedText: string) => handleResult(decodedText),
+          () => { }
+        )
         .then(() => {
-          scannerRef.current.clear();
-          const container = document.getElementById('scanner-container');
-          if (container) container.innerHTML = '';
-          scannerRef.current = null;
+          // 👇 Sau khi start thành công, xử lý video thừa
+          const videos = document.querySelectorAll('#reader video');
+          if (videos.length > 1) {
+            for (let i = 1; i < videos.length; i++) {
+              (videos[i] as HTMLElement).style.display = 'none';
+            }
+          }
         })
-        .catch((err: any) => {
-          console.error('❌ Lỗi khi dừng camera:', err);
-        });
-    }
-  };
-}, []);
+        .catch((err) => console.error('🚫 Không thể mở camera:', err));
+    });
 
-
-
+    return () => {
+      if (scannerRef.current) {
+        scannerRef.current.stop().then(() => scannerRef.current.clear());
+      }
+    };
+  }, []);
 
   const handleUploadImage = async (): Promise<string> => {
     if (!borrowerImageFile) return '';
@@ -124,28 +94,20 @@ useEffect(() => {
     const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/loan/upload-image`, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${localStorage.getItem('invenly_token') || ''}`,
+        'Authorization': `Bearer ${localStorage.getItem('invenly_token') || ''}`
       },
       body: formData,
     });
 
-    if (res.status === 401) {
-      alert('⚠️ Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
-      window.location.href = '/login';
-      return '';
-    }
-
-    if (!res.ok) {
-      setStatusMessage('❌ Upload ảnh thất bại');
-      return '';
-    }
-
     const result = await res.json();
+
+    console.log(`upload image success !!!`)
     return result.imageUrl;
   };
 
+
   const handleSubmit = async () => {
-    if (!borrowerName || scannedItems.some((i) => !i.returnDueDate)) {
+    if (!borrowerName || scannedItems.some(i => !i.returnDueDate)) {
       setStatusMessage('⚠️ Vui lòng nhập đủ thông tin');
       return;
     }
@@ -171,19 +133,12 @@ useEffect(() => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('invenly_token') || ''}`,
+          'Authorization': `Bearer ${localStorage.getItem('invenly_token') || ''}`,
         },
         body: JSON.stringify(payload),
       });
 
       const result = await res.json();
-
-      if (res.status === 401) {
-        setStatusMessage('⚠️ Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
-        localStorage.setItem('pendingLoanRequest', JSON.stringify(payload));
-        window.location.href = '/login';
-        return;
-      }
 
       if (res.ok) {
         setStatusMessage(`✅ Mượn thành công: ${result.success} vật phẩm\n❌ Thất bại: ${result.failed.join(', ')}`);
@@ -197,35 +152,27 @@ useEffect(() => {
       setStatusMessage('❌ Lỗi hệ thống khi gửi yêu cầu');
     } finally {
       setLoading(false);
-      setTimeout(() => setStatusMessage(null), 6000);
+      setTimeout(() => setStatusMessage(null), 6000); // tự động ẩn sau 6s
     }
   };
 
   return (
     <div className="p-6 space-y-4">
       <h2 className="text-xl font-bold">📦 Quét để mượn vật phẩm</h2>
-
-      {scannedItems.length === 0 && (
-        <div
-          id="scanner-container"
-          className="w-full max-w-xs mx-auto border rounded overflow-hidden"
-        />
-      )}
+      <div id="reader" className="w-full max-w-xs mx-auto border rounded overflow-hidden" />
 
       {error && <p className="text-red-500 text-sm">{error}</p>}
 
-      <Label htmlFor="borrowerName">Tên người mượn</Label>
-      <Input
-        id="borrowerName"
-        placeholder="Nhập tên người mượn"
+      <input
+        className="border p-2 rounded w-full"
+        placeholder="Tên người mượn"
         value={borrowerName}
         onChange={(e) => setBorrowerName(e.target.value)}
       />
 
       <div className="space-y-2">
-        <Label htmlFor="borrowerImage">Ảnh người mượn</Label>
-        <Input
-          id="borrowerImage"
+        <label className="block text-sm font-medium">Ảnh người mượn</label>
+        <input
           type="file"
           accept="image/*"
           onChange={(e) => {
@@ -234,22 +181,70 @@ useEffect(() => {
             }
           }}
         />
-        {borrowerImageFile && <p className="text-sm text-muted-foreground">📎 {borrowerImageFile.name}</p>}
       </div>
 
-      {/* Chỗ hiển thị danh sách scannedItems - giữ nguyên theo ý bạn */}
+      {scannedItems.map((item, index) => (
+        <div key={item.code} className="border p-3 rounded space-y-2">
+          <div className="flex items-center space-x-3">
+            <img src={item.imageUrl} className="w-12 h-12 rounded object-cover" />
+            <div>
+              <p className="font-medium">{item.name}</p>
+              <p className="text-xs text-gray-600">{item.code}</p>
+            </div>
+          </div>
+
+          <input
+            type="date"
+            value={item.returnDueDate}
+            onChange={(e) => {
+              const newItems = [...scannedItems];
+              newItems[index].returnDueDate = e.target.value;
+              setScannedItems(newItems);
+            }}
+            className="border rounded p-2 w-full"
+          />
+
+          <label className="flex items-center space-x-2 text-sm">
+            <input
+              type="checkbox"
+              checked={item.damaged}
+              onChange={(e) => {
+                const newItems = [...scannedItems];
+                newItems[index].damaged = e.target.checked;
+                setScannedItems(newItems);
+              }}
+            />
+            <span>Vật phẩm bị hư?</span>
+          </label>
+
+          {item.damaged && (
+            <textarea
+              placeholder="Mô tả hư hỏng"
+              value={item.damageNote}
+              onChange={(e) => {
+                const newItems = [...scannedItems];
+                newItems[index].damageNote = e.target.value;
+                setScannedItems(newItems);
+              }}
+              className="border rounded p-2 w-full"
+              rows={2}
+            />
+          )}
+        </div>
+      ))}
 
       {scannedItems.length > 0 && (
         <Button className="w-full" onClick={handleSubmit} disabled={loading}>
-          {loading ? 'Đang gửi...' : `📤 Gửi yêu cầu mượn (${scannedItems.length})`}
+          {loading ? 'Đang gửi...' : `Gửi yêu cầu mượn (${scannedItems.length} vật phẩm)`}
         </Button>
       )}
 
       {statusMessage && (
-        <div className="bg-gray-100 border rounded p-3 text-sm text-gray-800 whitespace-pre-line">
+        <div className="bg-gray-100 border rounded p-3 text-sm text-gray-800">
           {statusMessage}
         </div>
       )}
+
     </div>
   );
 }
