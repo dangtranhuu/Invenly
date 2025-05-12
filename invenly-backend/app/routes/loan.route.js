@@ -11,7 +11,8 @@ module.exports = function (app) {
     next();
   });
 
-  app.post('/api/loan/return/:id', authJwt.verifyToken, controller.returnLoanItem);
+  app.get('/api/loan/user', authJwt.verifyToken, controller.getLoanByUser);
+  app.get('/api/loan/return/:id', authJwt.verifyToken, controller.returnLoanItem);
   app.post('/api/loan/upload-image',  upload.single('image'), controller.uploadLoanImage);
   app.post('/api/loan/batch', authJwt.verifyToken, controller.createBatchLoan);
 };

@@ -1,6 +1,50 @@
 const Item = require('../models/item.model');
 const Loan = require('../models/loan.model').default;
 
+exports.getLoanByUser = async (req, res) => {
+  try {
+    const user = req.user;
+    const isAdmin = user.roles?.includes('ADMIN');
+    const isManager = user.roles?.includes('MANAGER');
+
+    if (!isAdmin && !isManager) {
+      return res.status(403).json({ error: 'Bạn không có quyền xem dữ liệu này' });
+    }
+
+    // Lọc các loan chưa bị xóa (chưa hoàn trả)
+    const query = { isDeleted: false };
+
+    // Nếu là manager thì chỉ lấy các món mình cho mượn
+    if (isManager && !isAdmin) {
+      query.createdBy = user._id; // cần đảm bảo trường này tồn tại trong Loan
+    }
+
+    const loans = await Loan.find(query).sort({ loanDate: -1 });
+
+    const codes = loans.map((l) => l.code);
+    const items = await Item.find({ code: { $in: codes } });
+
+    // Ghép thông tin item vào loan
+    const result = loans.map((loan) => {
+      const item = items.find((i) => i.code === loan.code);
+      return {
+        _id: loan._id,
+        code: loan.code,
+        name: item?.name || 'Không rõ',
+        borrowerName: loan.borrowerName,
+        loanDate: loan.createDate,
+        returnDueDate: loan.returnDueDate,
+        imageUrl: item?.imageUrl || null,
+      };
+    });
+
+    res.status(200).json({ items: result });
+  } catch (err) {
+    console.error('[GET USER LOAN ERROR]', err);
+    res.status(500).json({ error: 'Lỗi server khi tải danh sách mượn' });
+  }
+};
+
 exports.returnLoanItem = async (req, res) => {
   try {
     const { id } = req.params;
