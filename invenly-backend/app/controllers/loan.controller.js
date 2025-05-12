@@ -26,17 +26,18 @@ exports.getLoanByUser = async (req, res) => {
 
     // Ghép thông tin item vào loan
     const result = loans.map((loan) => {
-      const item = items.find((i) => i.code === loan.code);
+      const item = items.find((i) => i._id.toString() === loan.itemId.toString());
       return {
         _id: loan._id,
-        code: loan.code,
+        code: item?.code || 'Không rõ',
         name: item?.name || 'Không rõ',
         borrowerName: loan.borrowerName,
-        loanDate: loan.createDate,
+        loanDate: loan.loanDate, // hoặc createdAt nếu cần
         returnDueDate: loan.returnDueDate,
         imageUrl: item?.imageUrl || null,
       };
     });
+
 
     res.status(200).json({ items: result });
   } catch (err) {
