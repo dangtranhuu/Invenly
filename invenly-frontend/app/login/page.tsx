@@ -47,7 +47,7 @@ export default function LoginPage() {
           }
 
           localStorage.removeItem('pendingLoanRequest');
-          router.push('/dashboard'); // hoặc quay về /scan
+          router.push('/loan'); // hoặc quay về /scan
           return;
         } catch (err) {
           alert('❌ Lỗi khi gửi lại yêu cầu mượn');
