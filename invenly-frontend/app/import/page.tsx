@@ -10,11 +10,11 @@ export default function ItemImport() {
   const handleExcelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-  
+
     const data = await file.arrayBuffer();
     const workbook = XLSX.read(data);
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
-  
+
     const raw = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as (string[])[];
     const [headers, ...rows] = raw;
 
@@ -28,7 +28,7 @@ export default function ItemImport() {
     setItems(formatted);
 
   };
-  
+
 
   const handleImport = async () => {
     setLoading(true);
@@ -37,13 +37,20 @@ export default function ItemImport() {
     const decoded = JSON.parse(atob(token!.split('.')[1]));
     const manager = decoded.username;
 
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/import-items`, {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/item/import-items`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ manager, items }),
     });
 
     const result = await res.json();
+
+    if (res.status === 401) {
+      alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+      localStorage.setItem('pendingRequest', JSON.stringify({ manager, items }));
+      window.location.href = '/login';
+    }
+
     setLoading(false);
     alert(result.message);
   };

@@ -1,6 +1,6 @@
 const authJwt = require("../middlewares/authJwt");
 const controller = require('../controllers/item.controller');
-const  upload  = require('../utils/multer'); // nếu dùng multer tách riêng
+const upload = require('../utils/multer'); // nếu dùng multer tách riêng
 
 
 module.exports = function (app) {
@@ -19,11 +19,11 @@ module.exports = function (app) {
   app.post('/api/item', controller.createItem);
   app.put('/api/item/:id', controller.updateItem);
   app.delete('/api/item/:id', controller.deleteItem);
-  app.post('/api/import-items', controller.importItems);
+  app.post('/api/item/import-items', controller.importItems);
 
   app.post('/api/item/:id/upload-image', upload.single('image'), controller.uploadImage);
   app.get('/api/item/code/:code', controller.getItemByCode);
   // Nếu có các route mở rộng sau này (nhập thêm số lượng, lọc theo category...)
-//   app.post('/api/items', authJwt.verifyToken, authJwt.isAdmin, controller.createItem);
+  //   app.post('/api/items', authJwt.verifyToken, authJwt.isAdmin, controller.createItem);
 
 };

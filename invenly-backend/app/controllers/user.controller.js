@@ -26,15 +26,16 @@ exports.getUserById = async (req, res) => {
 exports.createUser = async (req, res) => {
   try {
     const { username, fullname, password, roles } = req.body;
+    const normalizedUsername = username.toLowerCase();
 
-    // Kiểm tra username tồn tại chưa
-    const existing = await User.findOne({ username });
+    // Kiểm tra username đã tồn tại
+    const existing = await User.findOne({ username: normalizedUsername });
     if (existing) return res.status(400).json({ error: 'Username đã tồn tại' });
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = new User({
-      username,
+      username: normalizedUsername,
       fullname,
       password: hashedPassword,
       roles,

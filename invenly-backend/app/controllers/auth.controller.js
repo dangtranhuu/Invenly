@@ -8,7 +8,9 @@ exports.signin = async (req, res) => {
     const { username, password } = req.body;
     console.log('[LOGIN] input:', { username, password });
 
-    const user = await User.findOne({ username });
+    const normalizedUsername = username.toLowerCase();
+
+    const user = await User.findOne({ username: normalizedUsername });
     if (!user) {
       console.log('[LOGIN] User not found');
       return res.status(400).json({ message: "User not found" });
@@ -24,7 +26,7 @@ exports.signin = async (req, res) => {
     }
 
     console.log(config.secretJwt)
-    
+
     const token = jwt.sign(
       { username: user.username, roles: user.roles },
       config.secretJwt,
