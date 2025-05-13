@@ -1,22 +1,22 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { withAuthGuard } from '@/lib/withAuthGuard';
 
 export default function LoanScanPage() {
+  const router = useRouter();
   const scannerRef = useRef<any>(null);
   const scannedRef = useRef(false);
+  const scannedCodesRef = useRef<Set<string>>(new Set());
 
   const [scannedItems, setScannedItems] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [borrowerName, setBorrowerName] = useState('');
   const [borrowerImageFile, setBorrowerImageFile] = useState<File | null>(null);
-  const [borrowerImageUrl, setBorrowerImageUrl] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
-
-
-  const scannedCodesRef = useRef<Set<string>>(new Set());
 
   const handleResult = async (scannedCode: string) => {
     if (scannedRef.current || scannedCodesRef.current.has(scannedCode)) return;
@@ -33,12 +33,7 @@ export default function LoanScanPage() {
         scannedCodesRef.current.add(scannedCode);
         setScannedItems((prev) => [
           ...prev,
-          {
-            ...data,
-            returnDueDate: '',
-            damaged: false,
-            damageNote: '',
-          },
+          { ...data, returnDueDate: '', damaged: false, damageNote: '' }
         ]);
         setError(null);
       }
@@ -52,59 +47,47 @@ export default function LoanScanPage() {
   };
 
   useEffect(() => {
-    import('html5-qrcode').then(({ Html5Qrcode }) => {
-      const container = document.getElementById('reader');
-      if (container) container.innerHTML = '';
+    withAuthGuard(async () => {
+      import('html5-qrcode').then(({ Html5Qrcode }) => {
+        const container = document.getElementById('reader');
+        if (container) container.innerHTML = '';
 
-      const scanner = new Html5Qrcode('reader');
-      scannerRef.current = scanner;
+        const scanner = new Html5Qrcode('reader');
+        scannerRef.current = scanner;
 
-      scanner
-        .start(
+        scanner.start(
           { facingMode: 'environment' },
           { fps: 10, qrbox: 250 },
           (decodedText: string) => handleResult(decodedText),
-          () => { }
-        )
-        .then(() => {
-          // 👇 Sau khi start thành công, xử lý video thừa
+          () => {}
+        ).then(() => {
           const videos = document.querySelectorAll('#reader video');
           if (videos.length > 1) {
             for (let i = 1; i < videos.length; i++) {
               (videos[i] as HTMLElement).style.display = 'none';
             }
           }
-        })
-        .catch((err) => console.error('🚫 Không thể mở camera:', err));
-    });
-
-    return () => {
-      if (scannerRef.current) {
-        scannerRef.current.stop().then(() => scannerRef.current.clear());
-      }
-    };
-  }, []);
+        }).catch((err) => console.error('🚫 Không thể mở camera:', err));
+      });
+    }, router, '/login', '/loan');
+  }, [router]);
 
   const handleUploadImage = async (): Promise<string> => {
     if (!borrowerImageFile) return '';
-
     const formData = new FormData();
     formData.append('image', borrowerImageFile);
 
     const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/loan/upload-image`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('invenly_token') || ''}`
+        Authorization: `Bearer ${localStorage.getItem('invenly_token') || ''}`,
       },
       body: formData,
     });
 
     const result = await res.json();
-
-    console.log(`upload image success !!!`)
     return result.imageUrl;
   };
-
 
   const handleSubmit = async () => {
     if (!borrowerName || scannedItems.some(i => !i.returnDueDate)) {
@@ -121,7 +104,7 @@ export default function LoanScanPage() {
       const payload = {
         borrowerName,
         borrowerImageUrl: imageUrl,
-        items: scannedItems.map((i) => ({
+        items: scannedItems.map(i => ({
           code: i.code,
           returnDueDate: i.returnDueDate,
           damaged: i.damaged,
@@ -133,7 +116,7 @@ export default function LoanScanPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('invenly_token') || ''}`,
+          Authorization: `Bearer ${localStorage.getItem('invenly_token') || ''}`,
         },
         body: JSON.stringify(payload),
       });
@@ -141,9 +124,9 @@ export default function LoanScanPage() {
       const result = await res.json();
 
       if (res.status === 401 || res.status === 403) {
-        setStatusMessage('⚠️ Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
         localStorage.setItem('pendingLoanRequest', JSON.stringify(payload));
-        window.location.href = '/login';
+        localStorage.setItem('redirectAfterLogin', '/loan');
+        router.push('/login');
         return;
       }
 
@@ -155,11 +138,11 @@ export default function LoanScanPage() {
       } else {
         setStatusMessage(`❌ Gửi thất bại: ${result.error || 'Lỗi không xác định'}`);
       }
-    } catch (err) {
+    } catch {
       setStatusMessage('❌ Lỗi hệ thống khi gửi yêu cầu');
     } finally {
       setLoading(false);
-      setTimeout(() => setStatusMessage(null), 6000); // tự động ẩn sau 6s
+      setTimeout(() => setStatusMessage(null), 6000);
     }
   };
 
@@ -247,11 +230,10 @@ export default function LoanScanPage() {
       )}
 
       {statusMessage && (
-        <div className="bg-gray-100 border rounded p-3 text-sm text-gray-800">
+        <div className="bg-gray-100 border rounded p-3 text-sm text-gray-800 whitespace-pre-line">
           {statusMessage}
         </div>
       )}
-
     </div>
   );
 }
