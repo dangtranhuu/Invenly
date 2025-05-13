@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { withAuthGuard } from '@/lib/withAuthGuard';
 import {
   Table,
   TableBody,
@@ -26,37 +27,26 @@ export default function LoanManagerPage() {
   const [items, setItems] = useState<LoanItem[]>([]);
   const [loading, setLoading] = useState(true);
 
+
   useEffect(() => {
-    const token = localStorage.getItem('invenly_token');
-    if (!token) {
-      localStorage.setItem('redirectAfterLogin', '/loan/manager');
-      router.push('/login');
-      return;
-    }
+    withAuthGuard(async (token) => {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/loan/user`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-    const fetchLoans = async () => {
-      try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/loan/user`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (res.status === 401) {
-          localStorage.setItem('redirectAfterLogin', '/loan/manager');
-          router.push('/login');
-          return;
-        }
-
-        const data = await res.json();
-        setItems(data.items || []);
-      } catch (err) {
-        console.error('Lỗi khi tải danh sách mượn:', err);
-      } finally {
-        setLoading(false);
+      if (!res.ok) {
+        const err = new Error('Unauthorized');
+        (err as any).status = res.status;
+        throw err;
       }
-    };
 
-    fetchLoans();
+      const data = await res.json();
+      setItems(data.items || []);
+      setLoading(false);
+    }, router, '/login', '/loan/manager'); // 👈 thêm path này để quay lại sau login
   }, [router]);
+
+
 
   const handleReturnItem = async (itemId: string) => {
     const confirmed = confirm('Xác nhận đã nhận lại vật phẩm này?');
