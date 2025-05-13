@@ -69,7 +69,7 @@ export default function LoginPage() {
 
 
       // Không có pending loan → login bình thường
-      router.push('/dashboard');
+      // router.push('/dashboard');
     } else {
       setError(data.message || 'Đăng nhập thất bại');
     }
