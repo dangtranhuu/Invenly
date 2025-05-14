@@ -111,6 +111,7 @@ exports.createBatchLoan = async (req, res) => {
 
       await loan.save();
       dbItem.isLoaned = true;
+      dbItem.lastLender = req.user._id;
       await dbItem.save();
 
       successLoans.push(loan);

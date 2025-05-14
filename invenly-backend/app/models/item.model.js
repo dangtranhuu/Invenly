@@ -9,6 +9,10 @@ const itemSchema = new mongoose.Schema({
   manager: String,
   source: String,
   isLoaned: { type: Boolean, default: false },
+  lastLender: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "user"
+  },
   isDamaged: { type: Boolean, default: false },
   // Thuộc tính động cho từng loại
   attributes: [
