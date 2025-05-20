@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { withAuthGuard } from '@/lib/withAuthGuard'; // Đường dẫn đúng đến file bạn đã có
 
 export default function ScanPage() {
   const scannerRef = useRef<any>(null);
@@ -10,6 +12,7 @@ export default function ScanPage() {
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const scannedRef = useRef(false);
+  const router = useRouter();
 
   const handleResult = async (scannedCode: string) => {
     if (scannedRef.current || scannedCode === code) return;
@@ -35,43 +38,27 @@ export default function ScanPage() {
   };
 
   useEffect(() => {
-    let scannerInstance: any;
+    withAuthGuard(async () => {
+      const { Html5Qrcode } = await import('html5-qrcode');
 
-    import('html5-qrcode').then(({ Html5Qrcode }) => {
       const container = document.getElementById('reader');
       if (container) container.innerHTML = '';
 
-      if (!scannerRef.current) {
-        scannerInstance = new Html5Qrcode('reader');
-        scannerRef.current = scannerInstance;
+      const scanner = new Html5Qrcode('reader');
+      scannerRef.current = scanner;
 
-        scannerInstance
-          .start(
-            { facingMode: 'environment' },
-            { fps: 10, qrbox: { width: 250, height: 250 } },
-            (decodedText: string) => handleResult(decodedText),
-            () => {}
-          )
-          .catch((err: any) => {
-            console.error('🚫 Không thể mở camera:', err);
-          });
-      }
-    });
+      scanner.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: 250 },
+        (decodedText: string) => handleResult(decodedText),
+        () => { }
+      ).catch((err) => {
+        console.error('🚫 Không thể mở camera:', err);
+      });
+    }, router, '/login', '/scan');
+  }, [router]);
 
-    return () => {
-      if (scannerRef.current) {
-        scannerRef.current
-          .stop()
-          .then(() => {
-            scannerRef.current.clear();
-            const container = document.getElementById('reader');
-            if (container) container.innerHTML = '';
-            scannerRef.current = null;
-          })
-          .catch(() => {});
-      }
-    };
-  }, []);
+
 
   const handleUpdate = async () => {
     try {
@@ -115,51 +102,51 @@ export default function ScanPage() {
                 className="w-full border rounded px-3 py-2"
               />
               <div className="space-y-2">
-  <h4 className="font-medium">Thuộc tính mở rộng</h4>
-  {form.attributes?.map((attr: any, index: number) => (
-    <div key={index} className="flex gap-2">
-      <input
-        className="border px-2 py-1 rounded w-1/2"
-        value={attr.key}
-        onChange={(e) => {
-          const attrs = [...form.attributes];
-          attrs[index].key = e.target.value;
-          setForm({ ...form, attributes: attrs });
-        }}
-        placeholder="Tên thuộc tính"
-      />
-      <input
-        className="border px-2 py-1 rounded w-1/2"
-        value={attr.value}
-        onChange={(e) => {
-          const attrs = [...form.attributes];
-          attrs[index].value = e.target.value;
-          setForm({ ...form, attributes: attrs });
-        }}
-        placeholder="Giá trị"
-      />
-      <button
-        className="text-red-500"
-        onClick={() => {
-          const attrs = [...form.attributes];
-          attrs.splice(index, 1);
-          setForm({ ...form, attributes: attrs });
-        }}
-      >
-        ✕
-      </button>
-    </div>
-  ))}
-  <button
-    className="text-sm text-blue-600 underline"
-    onClick={() => {
-      const newAttrs = [...(form.attributes || []), { key: "", value: "" }];
-      setForm({ ...form, attributes: newAttrs });
-    }}
-  >
-    + Thêm thuộc tính
-  </button>
-</div>
+                <h4 className="font-medium">Thuộc tính mở rộng</h4>
+                {form.attributes?.map((attr: any, index: number) => (
+                  <div key={index} className="flex gap-2">
+                    <input
+                      className="border px-2 py-1 rounded w-1/2"
+                      value={attr.key}
+                      onChange={(e) => {
+                        const attrs = [...form.attributes];
+                        attrs[index].key = e.target.value;
+                        setForm({ ...form, attributes: attrs });
+                      }}
+                      placeholder="Tên thuộc tính"
+                    />
+                    <input
+                      className="border px-2 py-1 rounded w-1/2"
+                      value={attr.value}
+                      onChange={(e) => {
+                        const attrs = [...form.attributes];
+                        attrs[index].value = e.target.value;
+                        setForm({ ...form, attributes: attrs });
+                      }}
+                      placeholder="Giá trị"
+                    />
+                    <button
+                      className="text-red-500"
+                      onClick={() => {
+                        const attrs = [...form.attributes];
+                        attrs.splice(index, 1);
+                        setForm({ ...form, attributes: attrs });
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                <button
+                  className="text-sm text-blue-600 underline"
+                  onClick={() => {
+                    const newAttrs = [...(form.attributes || []), { key: "", value: "" }];
+                    setForm({ ...form, attributes: newAttrs });
+                  }}
+                >
+                  + Thêm thuộc tính
+                </button>
+              </div>
               <input
                 value={form.source}
                 onChange={(e) => setForm({ ...form, source: e.target.value })}
