@@ -50,53 +50,77 @@ exports.getItemByCode = async (req, res) => {
     res.status(500).json({ error: 'Lỗi server' });
   }
 };
-  
+
 
 // Tạo mới vật phẩm
 exports.createItem = async (req, res) => {
-    try {
-      const {
-        name, category, description, totalQuantity,
-        minThreshold, imageUrl, manager, source
-      } = req.body;
-  
-      const timestamp = Date.now();
-      const code = `ITEM-${timestamp}`; // Ví dụ: ITEM-1714990109923
-  
-      const item = new Item({
-        name,
-        code,
-        category,
-        description,
-        totalQuantity,
-        remainingQuantity: totalQuantity,
-        minThreshold,
-        imageUrl,
-        manager,
-        source
-      });
-  
-      await item.save();
-  
-      res.status(201).json({
-        message: "Tạo vật phẩm thành công",
-        item
-      });
-    } catch (err) {
-      res.status(500).json({ error: "Lỗi server" });
-    }
+  try {
+    const {
+      name, category, description, totalQuantity,
+      minThreshold, imageUrl, manager, source
+    } = req.body;
+
+    const timestamp = Date.now();
+    const code = `ITEM-${timestamp}`; // Ví dụ: ITEM-1714990109923
+
+    const item = new Item({
+      name,
+      code,
+      category,
+      description,
+      totalQuantity,
+      remainingQuantity: totalQuantity,
+      minThreshold,
+      imageUrl,
+      manager,
+      source
+    });
+
+    await item.save();
+
+    res.status(201).json({
+      message: "Tạo vật phẩm thành công",
+      item
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Lỗi server" });
+  }
 };
-  
+
 // Cập nhật vật phẩm
 exports.updateItem = async (req, res) => {
   try {
-    const updated = await Item.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!updated) return res.status(404).json({ error: 'Không tìm thấy vật phẩm' });
-    res.json({ message: 'Cập nhật thành công', item: updated });
+    const userId = req.user?._id; // lấy _id từ middleware
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Không xác định được người dùng cập nhật' });
+    }
+
+    const updateData = req.body;
+
+    const item = await Item.findById(req.params.id);
+    if (!item) return res.status(404).json({ error: 'Không tìm thấy vật phẩm' });
+
+    // Cập nhật dữ liệu
+    Object.assign(item, updateData);
+
+    // Ghi lịch sử cập nhật
+    item.updateHistory = item.updateHistory || [];
+    item.updateHistory.push({
+      user: userId,
+      updatedAt: new Date()
+    });
+
+    await item.save();
+
+    res.json({ message: 'Cập nhật thành công', item });
   } catch (err) {
+    console.error('[UPDATE ERROR]', err);
     res.status(500).json({ error: 'Lỗi server' });
   }
 };
+
+
 
 // Xóa mềm vật phẩm (soft delete)
 exports.deleteItem = async (req, res) => {

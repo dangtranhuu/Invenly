@@ -21,6 +21,12 @@ const itemSchema = new mongoose.Schema({
       value: String
     }
   ],
+  updateHistory: [
+    {
+      user: { type: mongoose.Schema.Types.ObjectId, ref: 'user' },
+      updatedAt: Date
+    }
+  ],
   isDeleted: { type: Boolean, default: false }
 }, { timestamps: true });
 
